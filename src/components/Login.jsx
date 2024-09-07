@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { Link } from 'react-router-dom';
+import { auth } from '../utilities/firebase'; // Import the Firebase auth instance
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase Auth method
 
 const Login = ({ setUser }) => {
   const [email, setEmail] = useState('');
@@ -11,9 +13,11 @@ const Login = ({ setUser }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
-      const response = await axios.post('/api/login', { email, password });
-      setUser(response.data.user);
+      // Use Firebase Authentication method
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      setUser(userCredential.user); // Pass user data to parent component
     } catch (error) {
       console.error('Login failed', error);
       setError('Invalid email or password');
@@ -58,6 +62,14 @@ const Login = ({ setUser }) => {
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
+          </div>
+          <div className="mt-4 text-center">
+            <p>
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-blue-500">
+                Sign Up
+              </Link>
+            </p>
           </div>
         </form>
       </div>

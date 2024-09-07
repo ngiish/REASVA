@@ -25,3 +25,6 @@ dist-ssr
 
 
 firebase.js
+database.rules.json
+firebaserc
+firebase.json

@@ -13,7 +13,10 @@ const Dashboard = ({ user }) => {
         const response = await axios.get('/api/data', {
           headers: { Authorization: `Bearer ${user.token}` }
         });
-        setData(response.data);
+
+        // Check if the response data is an array
+        const fetchedData = Array.isArray(response.data) ? response.data : [];
+        setData(fetchedData);
       } catch (error) {
         console.error('Error fetching data', error);
         setError('Failed to fetch data. Please try again.');
@@ -34,14 +37,18 @@ const Dashboard = ({ user }) => {
         <p className="text-red-500 text-center">{error}</p>
       ) : (
         <ul className="space-y-4">
-          {data.map((item, index) => (
-            <li
-              key={index}
-              className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
-            >
-              {item}
-            </li>
-          ))}
+          {data.length > 0 ? (
+            data.map((item, index) => (
+              <li
+                key={index}
+                className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
+              >
+                {item}
+              </li>
+            ))
+          ) : (
+            <p className="text-center text-gray-500">No data available.</p>
+          )}
         </ul>
       )}
     </div>

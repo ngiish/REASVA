@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { auth, db } from '../utilities/firebase'; // Update with your correct path
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -13,7 +13,7 @@ const Signup = ({ setUser }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  //POST method to add users to the 
+  // POST method to add users to the database
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -102,6 +102,14 @@ const Signup = ({ setUser }) => {
           >
             {loading ? 'Signing up...' : 'Sign Up'}
           </button>
+        </div>
+        <div className="mt-4 text-center">
+          <p>
+            Already have an account?{' '}
+            <Link to="/login" className="text-blue-500">
+              Log In
+            </Link>
+          </p>
         </div>
       </form>
     </div>
