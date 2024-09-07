@@ -7,7 +7,7 @@ const Dashboard = ({ user }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;  // Ensure user is defined
+      if (!user) return; // Ensure user is defined
 
       try {
         const response = await axios.get('/api/data', {
@@ -24,18 +24,23 @@ const Dashboard = ({ user }) => {
   }, [user]);
 
   if (!user) {
-    return <p>Please log in to view the dashboard.</p>;
+    return <p className="text-center mt-10 text-red-500">Please log in to view the dashboard.</p>;
   }
 
   return (
-    <div>
-      <h2>Dashboard</h2>
+    <div className="max-w-4xl mx-auto mt-10 p-6 bg-teal-50 shadow-lg rounded-lg">
+      <h2 className="text-3xl font-bold text-teal-700 text-center mb-6">Dashboard</h2>
       {error ? (
-        <p>{error}</p>
+        <p className="text-red-500 text-center">{error}</p>
       ) : (
-        <ul>
+        <ul className="space-y-4">
           {data.map((item, index) => (
-            <li key={index}>{item}</li>
+            <li
+              key={index}
+              className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
+            >
+              {item}
+            </li>
           ))}
         </ul>
       )}
