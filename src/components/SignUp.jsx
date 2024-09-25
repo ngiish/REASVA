@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth, db } from '../utilities/firebase'; // Update with your correct path
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { signupUser } from '../firebaseconfig/authService'; // Import the signup service
 
 const Signup = ({ setUser }) => {
   const [email, setEmail] = useState('');
@@ -13,31 +11,19 @@ const Signup = ({ setUser }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // POST method to add users to the database
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Create a new user with email and password
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Save additional user data to Firestore
-      const userData = {
-        name,
-        age,
-        email,
-        createdAt: new Date()
-      };
-
-      await setDoc(doc(db, 'users', user.uid), userData);
+      // Call signupUser service to sign up the user
+      const user = await signupUser(email, password, name, age);
 
       // Optionally set user data in the parent component
       setUser(user);
 
-      // Navigate to dashboard
+      // Navigate to the dashboard or home after successful signup
       navigate('/dashboard');
     } catch (error) {
       console.error('Signup failed', error);

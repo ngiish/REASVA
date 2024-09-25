@@ -24,7 +24,8 @@ dist-ssr
 *.sw?
 
 
-firebase.js
+firebaseConfig.js
 database.rules.json
 firebaserc
 firebase.json
+authService.js

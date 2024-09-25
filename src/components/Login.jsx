@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { auth } from '../utilities/firebase'; // Import the Firebase auth instance
-import { signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase Auth method
+import { loginUser } from '../firebaseconfig/authService'; // Import the login service
 
 const Login = ({ setUser }) => {
   const [email, setEmail] = useState('');
@@ -15,9 +14,9 @@ const Login = ({ setUser }) => {
     setError('');
 
     try {
-      // Use Firebase Authentication method
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      setUser(userCredential.user); // Pass user data to parent component
+      // Call loginUser service to log in the user
+      const user = await loginUser(email, password);
+      setUser(user); // Set user data in the parent component
     } catch (error) {
       console.error('Login failed', error);
       setError('Invalid email or password');
