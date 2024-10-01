@@ -18,7 +18,7 @@ const Signup = ({ setUser }) => {
 
     try {
       // Call signupUser service to sign up the user
-      const user = await signupUser(email, password, name, age);
+      const user = await signupUser(email, password, name, age); // Pass name and age
 
       // Optionally set user data in the parent component
       setUser(user);

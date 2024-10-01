@@ -75,7 +75,7 @@
 
 // // // export default Dashboard;
 // // export default GoogleApiWrapper({
-// //   apiKey:"A"
+// //   apiKey:"AIzaSyA3"
 // // }) (MapContainer)
 
 // import React, { useEffect, useState } from 'react';
@@ -148,15 +148,15 @@
 //   apiKey: "AE"
 // })(Dashboard);
 
+
+
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 import { GOOGLE_MAPS_API_KEY } from './mapsConfig'; // Import API key from mapsConfig.js
 
-
-
 const containerStyle = {
-  width: '400%',
+  width: '100%',
   height: '600px',
 };
 
@@ -193,20 +193,25 @@ const Dashboard = ({ user }) => {
     fetchData();
   }, [user]);
 
+  // Function to handle geocoding using latitude and longitude
   const handleGeocode = async (geocoder, map, infoWindow) => {
     const input = document.getElementById('latlng').value;
-    const latlngStr = input.split(',', 2);
+    const latlngStr = input.split(',', 2); // Split the input into lat and lng
     const latlng = {
-      lat: parseFloat(latlngStr[0]),
-      lng: parseFloat(latlngStr[1]),
+      lat: parseFloat(latlngStr[0]), // Convert latitude to float
+      lng: parseFloat(latlngStr[1]), // Convert longitude to float
     };
 
     try {
       const response = await geocoder.geocode({ location: latlng });
-      setMarkerPosition(latlng);
-      setAddress(response.results[0].formatted_address);
-      setInfoWindowOpen(true);
-      map.setCenter(latlng);
+      if (response.results && response.results.length > 0) {
+        setMarkerPosition(latlng);
+        setAddress(response.results[0].formatted_address); // Set the formatted address
+        setInfoWindowOpen(true); // Open the InfoWindow
+        map.setCenter(latlng); // Center the map on the new position
+      } else {
+        window.alert('No results found');
+      }
     } catch (e) {
       window.alert(`Geocoder failed due to: ${e}`);
     }
@@ -258,7 +263,7 @@ const Dashboard = ({ user }) => {
         </button>
       </div>
 
-      <LoadScript googleMapsApiKey= { GOOGLE_MAPS_API_KEY}>
+      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
