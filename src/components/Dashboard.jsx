@@ -150,10 +150,11 @@
 
 
 
+// src/components/Dashboard.js
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
-import { GOOGLE_MAPS_API_KEY } from './mapsConfig'; // Import API key from mapsConfig.js
+import { GOOGLE_MAPS_API_KEY } from './mapsConfig';
 
 const containerStyle = {
   width: '100%',
@@ -226,60 +227,63 @@ const Dashboard = ({ user }) => {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-teal-50 shadow-lg rounded-lg">
-      <h2 className="text-3xl font-bold text-teal-700 text-center mb-6">Dashboard</h2>
-      {error ? (
-        <p className="text-red-500 text-center">{error}</p>
-      ) : (
-        <ul className="space-y-4">
-          {data.length > 0 ? (
-            data.map((item, index) => (
-              <li
-                key={index}
-                className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
-              >
-                {item}
-              </li>
-            ))
-          ) : (
-            <p className="text-center text-gray-500">No data available.</p>
-          )}
-        </ul>
-      )}
+    <div className="dashboard-content">
+      <div className="max-w-4xl mx-auto mt-10 p-6 bg-teal-50 shadow-lg rounded-lg">
+        <h2 className="text-3xl font-bold text-teal-700 text-center mb-6">Dashboard</h2>
 
-      <div className="my-6">
-        <input
-          id="latlng"
-          type="text"
-          placeholder="Enter latitude,longitude"
-          className="p-2 border border-teal-400 rounded"
-        />
-        <button
-          id="submit"
-          className="p-2 ml-2 bg-teal-600 text-white rounded"
-          onClick={() => handleGeocode(new window.google.maps.Geocoder(), map, new window.google.maps.InfoWindow())}
-        >
-          Geocode
-        </button>
+        {error ? (
+          <p className="text-red-500 text-center">{error}</p>
+        ) : (
+          <ul className="space-y-4">
+            {data.length > 0 ? (
+              data.map((item, index) => (
+                <li
+                  key={index}
+                  className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
+                >
+                  {item}
+                </li>
+              ))
+            ) : (
+              <p className="text-center text-gray-500">No data available.</p>
+            )}
+          </ul>
+        )}
+
+        <div className="my-6">
+          <input
+            id="latlng"
+            type="text"
+            placeholder="Enter latitude,longitude"
+            className="p-2 border border-teal-400 rounded"
+          />
+          <button
+            id="submit"
+            className="p-2 ml-2 bg-teal-600 text-white rounded"
+            onClick={() => handleGeocode(new window.google.maps.Geocoder(), map, new window.google.maps.InfoWindow())}
+          >
+            Geocode
+          </button>
+        </div>
+
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={center}
+            zoom={10}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+          >
+            {/* Marker and InfoWindow */}
+            <Marker position={markerPosition} />
+            {infoWindowOpen && (
+              <InfoWindow position={markerPosition}>
+                <div>{address}</div>
+              </InfoWindow>
+            )}
+          </GoogleMap>
+        </LoadScript>
       </div>
-
-      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          center={center}
-          zoom={10}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-        >
-          { /* Marker and InfoWindow */}
-          <Marker position={markerPosition} />
-          {infoWindowOpen && (
-            <InfoWindow position={markerPosition}>
-              <div>{address}</div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
-      </LoadScript>
     </div>
   );
 };
