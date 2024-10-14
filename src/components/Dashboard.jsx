@@ -1,5 +1,3 @@
-
-// src/components/Dashboard.js
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
@@ -19,8 +17,8 @@ const Dashboard = ({ user }) => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [map, setMap] = useState(null);
-  const [markerPosition, setMarkerPosition] = useState(center);
-  const [address, setAddress] = useState('');
+  const [markers, setMarkers] = useState([]); // Store multiple markers
+  const [selectedMarker, setSelectedMarker] = useState(null); // Track the selected marker for InfoWindow
   const [infoWindowOpen, setInfoWindowOpen] = useState(false);
 
   useEffect(() => {
@@ -44,7 +42,7 @@ const Dashboard = ({ user }) => {
   }, [user]);
 
   // Function to handle geocoding using latitude and longitude
-  const handleGeocode = async (geocoder, map, infoWindow) => {
+  const handleGeocode = async (geocoder) => {
     const input = document.getElementById('latlng').value;
     const latlngStr = input.split(',', 2); // Split the input into lat and lng
     const latlng = {
@@ -55,9 +53,13 @@ const Dashboard = ({ user }) => {
     try {
       const response = await geocoder.geocode({ location: latlng });
       if (response.results && response.results.length > 0) {
-        setMarkerPosition(latlng);
-        setAddress(response.results[0].formatted_address); // Set the formatted address
-        setInfoWindowOpen(true); // Open the InfoWindow
+        const newMarker = {
+          position: latlng,
+          address: response.results[0].formatted_address,
+          title: 'Custom Title', // Replace with dynamic title if needed
+          description: 'Additional information about this location.', // Additional info
+        };
+        setMarkers((current) => [...current, newMarker]); // Add new marker to the state
         map.setCenter(latlng); // Center the map on the new position
       } else {
         window.alert('No results found');
@@ -65,6 +67,22 @@ const Dashboard = ({ user }) => {
     } catch (e) {
       window.alert(`Geocoder failed due to: ${e}`);
     }
+  };
+
+  // Function to handle map click event
+  const handleMapClick = (event) => {
+    const latlng = {
+      lat: event.latLng.lat(),
+      lng: event.latLng.lng(),
+    };
+
+    const newMarker = {
+      position: latlng,
+      address: 'New Marker', // Placeholder for address
+      title: 'New Marker Title', // Placeholder for title
+      description: 'Description for the new marker.', // Placeholder for description
+    };
+    setMarkers((current) => [...current, newMarker]); // Add new marker to the state
   };
 
   const onLoad = useCallback((map) => {
@@ -109,29 +127,52 @@ const Dashboard = ({ user }) => {
           <button
             id="submit"
             className="p-2 ml-2 bg-teal-600 text-white rounded"
-            onClick={() => handleGeocode(new window.google.maps.Geocoder(), map, new window.google.maps.InfoWindow())}
+            onClick={() => handleGeocode(new window.google.maps.Geocoder())}
           >
             Geocode
           </button>
         </div>
 
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={center}
-            zoom={10}
-            onLoad={onLoad}
-            onUnmount={onUnmount}
-          >
-            {/* Marker and InfoWindow */}
-            <Marker position={markerPosition} />
-            {infoWindowOpen && (
-              <InfoWindow position={markerPosition}>
-                <div>{address}</div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
-        </LoadScript>
+  <GoogleMap
+    mapContainerStyle={containerStyle}
+    center={center}
+    zoom={10}
+    onLoad={onLoad}
+    onUnmount={onUnmount}
+    onClick={handleMapClick} // Add click event to map
+  >
+    {/* Render all markers */}
+    {markers.map((marker, index) => (
+      <Marker
+        key={index}
+        position={marker.position}
+        onClick={() => {
+          setSelectedMarker(marker); // Set the clicked marker for InfoWindow
+          setInfoWindowOpen(true);   // Ensure the InfoWindow opens
+        }}
+      />
+    ))}
+
+    {/* InfoWindow for the selected marker */}
+    {infoWindowOpen && selectedMarker && (
+      <InfoWindow
+        position={selectedMarker.position}
+        onCloseClick={() => {
+          setInfoWindowOpen(false);   // Close InfoWindow when "X" is clicked
+          setSelectedMarker(null);    // Clear the selected marker
+        }}
+      >
+        <div>
+          <h4>{selectedMarker.title}</h4> {/* Display marker title */}
+          <p>{selectedMarker.description}</p> {/* Display marker description */}
+          <p>{selectedMarker.address}</p> {/* Display formatted address */}
+        </div>
+      </InfoWindow>
+    )}
+  </GoogleMap>
+</LoadScript>
+
       </div>
     </div>
   );
