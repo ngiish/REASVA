@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker, InfoWindow, DirectionsRenderer } from '@react-google-maps/api';
 import { GOOGLE_MAPS_API_KEY } from './mapsConfig';
 
 const containerStyle = {
@@ -19,7 +19,13 @@ const Dashboard = ({ user }) => {
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]); // Store multiple markers
   const [selectedMarker, setSelectedMarker] = useState(null); // Track the selected marker for InfoWindow
-  const [infoWindowOpen, setInfoWindowOpen] = useState(false);
+  const [infoWindowOpen, setInfoWindowOpen] = useState(false); // Track if the InfoWindow is open
+  const [directionsResponse, setDirectionsResponse] = useState(null); // Store directions result
+  const [distance, setDistance] = useState(''); // Distance between two markers
+  const [duration, setDuration] = useState(''); // Duration between two markers
+
+  const originRef = useRef(); // Ref for origin input
+  const destinationRef = useRef(); // Ref for destination input
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,6 +91,31 @@ const Dashboard = ({ user }) => {
     setMarkers((current) => [...current, newMarker]); // Add new marker to the state
   };
 
+  // Function to always open InfoWindow when marker is clicked
+  const handleMarkerClick = (marker) => {
+    setSelectedMarker(marker);
+    setInfoWindowOpen(true); // Always open the InfoWindow on marker click
+  };
+
+  // Calculate the route between two selected markers
+  async function calculateRoute() {
+    if (markers.length < 2) {
+      alert('Please add at least two markers to calculate a route.');
+      return;
+    }
+
+    const directionsService = new window.google.maps.DirectionsService();
+    const results = await directionsService.route({
+      origin: { lat: markers[0].position.lat, lng: markers[0].position.lng },
+      destination: { lat: markers[1].position.lat, lng: markers[1].position.lng },
+      travelMode: window.google.maps.TravelMode.DRIVING,
+    });
+
+    setDirectionsResponse(results);
+    setDistance(results.routes[0].legs[0].distance.text);
+    setDuration(results.routes[0].legs[0].duration.text);
+  }
+
   const onLoad = useCallback((map) => {
     setMap(map);
   }, []);
@@ -133,46 +164,56 @@ const Dashboard = ({ user }) => {
           </button>
         </div>
 
-        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-  <GoogleMap
-    mapContainerStyle={containerStyle}
-    center={center}
-    zoom={10}
-    onLoad={onLoad}
-    onUnmount={onUnmount}
-    onClick={handleMapClick} // Add click event to map
-  >
-    {/* Render all markers */}
-    {markers.map((marker, index) => (
-      <Marker
-        key={index}
-        position={marker.position}
-        onClick={() => {
-          setSelectedMarker(marker); // Set the clicked marker for InfoWindow
-          setInfoWindowOpen(true);   // Ensure the InfoWindow opens
-        }}
-      />
-    ))}
+        <button onClick={calculateRoute} className="p-2 bg-blue-600 text-white rounded">
+          Calculate Route
+        </button>
 
-    {/* InfoWindow for the selected marker */}
-    {infoWindowOpen && selectedMarker && (
-      <InfoWindow
-        position={selectedMarker.position}
-        onCloseClick={() => {
-          setInfoWindowOpen(false);   // Close InfoWindow when "X" is clicked
-          setSelectedMarker(null);    // Clear the selected marker
-        }}
-      >
         <div>
-          <h4>{selectedMarker.title}</h4> {/* Display marker title */}
-          <p>{selectedMarker.description}</p> {/* Display marker description */}
-          <p>{selectedMarker.address}</p> {/* Display formatted address */}
+          <p>Distance: {distance}</p>
+          <p>Duration: {duration}</p>
         </div>
-      </InfoWindow>
-    )}
-  </GoogleMap>
-</LoadScript>
 
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={center}
+            zoom={12}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+            onClick={handleMapClick} // Add click event to map
+          >
+            {/* Render all markers */}
+            {markers.map((marker, index) => (
+              <Marker
+                key={index}
+                position={marker.position}
+                onClick={() => handleMarkerClick(marker)} // Handle marker click to always open InfoWindow
+              />
+            ))}
+
+            {/* InfoWindow for selected marker */}
+            {infoWindowOpen && selectedMarker && (
+              <InfoWindow
+                position={selectedMarker.position}
+                onCloseClick={() => {
+                  setInfoWindowOpen(false); // Close InfoWindow when the "X" is clicked
+                  setSelectedMarker(null); // Clear the selected marker
+                }}
+              >
+                <div>
+                  <h4>{selectedMarker.title}</h4> {/* Display marker title */}
+                  <p>{selectedMarker.description}</p> {/* Display marker description */}
+                  <p>{selectedMarker.address}</p> {/* Display formatted address */}
+                </div>
+              </InfoWindow>
+            )}
+
+            {/* Display route if calculated */}
+            {directionsResponse && (
+              <DirectionsRenderer directions={directionsResponse} />
+            )}
+          </GoogleMap>
+        </LoadScript>
       </div>
     </div>
   );
