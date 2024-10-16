@@ -3,9 +3,10 @@ import axios from 'axios';
 import { GoogleMap, LoadScript, Marker, InfoWindow, DirectionsRenderer } from '@react-google-maps/api';
 import { GOOGLE_MAPS_API_KEY } from './mapsConfig';
 
+// Adjusted containerStyle for full screen
 const containerStyle = {
   width: '100%',
-  height: '600px',
+  height: '100%', // Change height to 100% for full screen
 };
 
 const center = {
@@ -125,8 +126,8 @@ const Dashboard = ({ user }) => {
   }, []);
 
   return (
-    <div className="dashboard-content">
-      <div className="max-w-4xl mx-auto mt-10 p-6 bg-teal-50 shadow-lg rounded-lg">
+    <div className="dashboard-content h-screen w-screen"> {/* Full height and width */}
+      <div className="h-full w-full p-6 bg-teal-50 shadow-lg rounded-lg"> {/* Covering full screen */}
         <h2 className="text-3xl font-bold text-teal-700 text-center mb-6">Dashboard</h2>
 
         {error ? (
