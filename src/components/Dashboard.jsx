@@ -24,9 +24,11 @@ const Dashboard = ({ user }) => {
   const [directionsResponse, setDirectionsResponse] = useState(null); // Store directions result
   const [distance, setDistance] = useState(''); // Distance between two markers
   const [duration, setDuration] = useState(''); // Duration between two markers
+  const [travelMode, setTravelMode] = useState(window.google.maps.TravelMode.DRIVING);
 
   const originRef = useRef(); // Ref for origin input
   const destinationRef = useRef(); // Ref for destination input
+  const placeNameRef = useRef(); // Ref for the place name input
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +100,35 @@ const Dashboard = ({ user }) => {
     setInfoWindowOpen(true); // Always open the InfoWindow on marker click
   };
 
+  // Function to handle place search using Google Places API
+  const handlePlaceSearch = () => {
+    const placeName = placeNameRef.current.value;
+    const service = new window.google.maps.places.PlacesService(map);
+
+    // Define the request to find the place by name
+    const request = {
+      query: placeName,
+      fields: ['name', 'geometry'],
+    };
+
+    // Make the request using the PlacesService
+    service.findPlaceFromQuery(request, (results, status) => {
+      if (status === window.google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+        const place = results[0];
+        const newMarker = {
+          position: place.geometry.location,
+          address: place.name,
+          title: place.name,
+          description: 'Description for the place.',
+        };
+        setMarkers((current) => [...current, newMarker]);
+        map.setCenter(place.geometry.location);
+      } else {
+        window.alert('Place not found');
+      }
+    });
+  };
+
   // Calculate the route between two selected markers
   async function calculateRoute() {
     if (markers.length < 2) {
@@ -149,6 +180,7 @@ const Dashboard = ({ user }) => {
           </ul>
         )}
 
+        {/* Geocoding input */}
         <div className="my-6">
           <input
             id="latlng"
@@ -165,6 +197,22 @@ const Dashboard = ({ user }) => {
           </button>
         </div>
 
+        {/* Place Name Search */}
+        <div className="my-6">
+          <input
+            ref={placeNameRef}
+            type="text"
+            placeholder="Enter place name"
+            className="p-2 border border-teal-400 rounded"
+          />
+          <button
+            className="p-2 ml-2 bg-teal-600 text-white rounded"
+            onClick={handlePlaceSearch}
+          >
+            Find Place
+          </button>
+        </div>
+
         <button onClick={calculateRoute} className="p-2 bg-blue-600 text-white rounded">
           Calculate Route
         </button>
@@ -174,7 +222,7 @@ const Dashboard = ({ user }) => {
           <p>Duration: {duration}</p>
         </div>
 
-        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={['places']}>
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
