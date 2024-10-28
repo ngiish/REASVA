@@ -24,7 +24,6 @@ const Dashboard = ({ user }) => {
   const [directionsResponse, setDirectionsResponse] = useState(null); // Store directions result
   const [distance, setDistance] = useState(''); // Distance between two markers
   const [duration, setDuration] = useState(''); // Duration between two markers
-  const [travelMode, setTravelMode] = useState(window.google.maps.TravelMode.DRIVING);
 
   const originRef = useRef(); // Ref for origin input
   const destinationRef = useRef(); // Ref for destination input
@@ -40,7 +39,20 @@ const Dashboard = ({ user }) => {
         });
 
         const fetchedData = Array.isArray(response.data) ? response.data : [];
-        setData(fetchedData);
+
+        // Assuming fetchedData contains objects with latitude and longitude
+        const newMarkers = fetchedData.map(item => ({
+          position: {
+            lat: item.latitude, // Replace with actual property for latitude
+            lng: item.longitude, // Replace with actual property for longitude
+          },
+          address: item.address || 'Address not available', // Use item.address if available
+          title: item.name || 'Location', // Use item.name or a default value
+          description: item.description || 'No description available.', // Provide a default
+        }));
+
+        setMarkers(newMarkers); // Set the markers state with fetched locations
+        setData(fetchedData); // Keep existing state update for other UI components
       } catch (error) {
         console.error('Error fetching data', error);
         setError('Failed to fetch data. Please try again.');
@@ -226,41 +238,31 @@ const Dashboard = ({ user }) => {
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
-            zoom={12}
+            zoom={8}
             onLoad={onLoad}
             onUnmount={onUnmount}
-            onClick={handleMapClick} // Add click event to map
+            onClick={handleMapClick} // Handle map click to add marker
           >
-            {/* Render all markers */}
             {markers.map((marker, index) => (
               <Marker
                 key={index}
                 position={marker.position}
-                onClick={() => handleMarkerClick(marker)} // Handle marker click to always open InfoWindow
+                onClick={() => handleMarkerClick(marker)} // Open InfoWindow on marker click
               />
             ))}
-
-            {/* InfoWindow for selected marker */}
-            {infoWindowOpen && selectedMarker && (
+            {selectedMarker && infoWindowOpen && (
               <InfoWindow
                 position={selectedMarker.position}
-                onCloseClick={() => {
-                  setInfoWindowOpen(false); // Close InfoWindow when the "X" is clicked
-                  setSelectedMarker(null); // Clear the selected marker
-                }}
+                onCloseClick={() => setInfoWindowOpen(false)} // Close the InfoWindow
               >
                 <div>
-                  <h4>{selectedMarker.title}</h4> {/* Display marker title */}
-                  <p>{selectedMarker.description}</p> {/* Display marker description */}
-                  <p>{selectedMarker.address}</p> {/* Display formatted address */}
+                  <h4>{selectedMarker.title}</h4>
+                  <p>{selectedMarker.description}</p>
+                  <p>{selectedMarker.address}</p>
                 </div>
               </InfoWindow>
             )}
-
-            {/* Display route if calculated */}
-            {directionsResponse && (
-              <DirectionsRenderer directions={directionsResponse} />
-            )}
+            {directionsResponse && <DirectionsRenderer directions={directionsResponse} />}
           </GoogleMap>
         </LoadScript>
       </div>
