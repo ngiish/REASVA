@@ -1,14 +1,23 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
-import { GoogleMap, LoadScript, Marker, InfoWindow, DirectionsRenderer } from '@react-google-maps/api';
-import { GOOGLE_MAPS_API_KEY } from './mapsConfig';
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import axios from "axios";
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  InfoWindow,
+  DirectionsRenderer,
+} from "@react-google-maps/api";
+import { GOOGLE_MAPS_API_KEY } from "./mapsConfig";
+import { ref, onValue } from "firebase/database";
+import { db } from "../firebaseconfig/firebaseConfig";
 
-// Adjusted containerStyle for full screen
+// Map container styling
 const containerStyle = {
-  width: '100%',
-  height: '100%', // Change height to 100% for full screen
+  width: "100%",
+  height: "100%",
 };
 
+// Map center coordinates
 const center = {
   lat: -1.286389,
   lng: 36.817223,
@@ -18,79 +27,42 @@ const Dashboard = ({ user }) => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState([]); // Store multiple markers
-  const [selectedMarker, setSelectedMarker] = useState(null); // Track the selected marker for InfoWindow
-  const [infoWindowOpen, setInfoWindowOpen] = useState(false); // Track if the InfoWindow is open
-  const [directionsResponse, setDirectionsResponse] = useState(null); // Store directions result
-  const [distance, setDistance] = useState(''); // Distance between two markers
-  const [duration, setDuration] = useState(''); // Duration between two markers
+  const [markers, setMarkers] = useState([]); // All markers (Firebase + user-added)
+  const [selectedMarker, setSelectedMarker] = useState(null);
+  const [infoWindowOpen, setInfoWindowOpen] = useState(false);
+  const [directionsResponse, setDirectionsResponse] = useState(null);
+  const [distance, setDistance] = useState("");
+  const [duration, setDuration] = useState("");
 
-  const originRef = useRef(); // Ref for origin input
-  const destinationRef = useRef(); // Ref for destination input
-  const placeNameRef = useRef(); // Ref for the place name input
+  const placeNameRef = useRef(); // Ref for place name search
 
+  // **1. Fetch data from Firebase**
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return; // Ensure user is defined
-
-      try {
-        const response = await axios.get('/api/data', {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-
-        const fetchedData = Array.isArray(response.data) ? response.data : [];
-
-        // Assuming fetchedData contains objects with latitude and longitude
-        const newMarkers = fetchedData.map(item => ({
-          position: {
-            lat: item.latitude, // Replace with actual property for latitude
-            lng: item.longitude, // Replace with actual property for longitude
-          },
-          address: item.address || 'Address not available', // Use item.address if available
-          title: item.name || 'Location', // Use item.name or a default value
-          description: item.description || 'No description available.', // Provide a default
-        }));
-
-        setMarkers(newMarkers); // Set the markers state with fetched locations
-        setData(fetchedData); // Keep existing state update for other UI components
-      } catch (error) {
-        console.error('Error fetching data', error);
-        setError('Failed to fetch data. Please try again.');
-      }
+    const fetchFirebaseLocations = () => {
+      const locationsRef = ref(db, "/locations");
+      const unsubscribe = onValue(locationsRef, (snapshot) => {
+        const fetchedData = snapshot.val();
+        if (fetchedData) {
+          const firebaseMarkers = Object.values(fetchedData).map((item) => ({
+            position: {
+              lat: item.latitude,
+              lng: item.longitude,
+            },
+            address: item.address || "Address not available",
+            title: item.name || "Location",
+            description: item.description || "No description available.",
+          }));
+          setMarkers((current) => [...current, ...firebaseMarkers]);
+        }
+      });
+      return unsubscribe;
     };
 
-    fetchData();
-  }, [user]);
+    const unsubscribe = fetchFirebaseLocations();
+    return () => unsubscribe(); // Cleanup Firebase listener
+  }, []);
 
-  // Function to handle geocoding using latitude and longitude
-  const handleGeocode = async (geocoder) => {
-    const input = document.getElementById('latlng').value;
-    const latlngStr = input.split(',', 2); // Split the input into lat and lng
-    const latlng = {
-      lat: parseFloat(latlngStr[0]), // Convert latitude to float
-      lng: parseFloat(latlngStr[1]), // Convert longitude to float
-    };
-
-    try {
-      const response = await geocoder.geocode({ location: latlng });
-      if (response.results && response.results.length > 0) {
-        const newMarker = {
-          position: latlng,
-          address: response.results[0].formatted_address,
-          title: 'Custom Title', // Replace with dynamic title if needed
-          description: 'Additional information about this location.', // Additional info
-        };
-        setMarkers((current) => [...current, newMarker]); // Add new marker to the state
-        map.setCenter(latlng); // Center the map on the new position
-      } else {
-        window.alert('No results found');
-      }
-    } catch (e) {
-      window.alert(`Geocoder failed due to: ${e}`);
-    }
-  };
-
-  // Function to handle map click event
+  // **2. Handle user-added markers**
   const handleMapClick = (event) => {
     const latlng = {
       lat: event.latLng.lat(),
@@ -99,31 +71,53 @@ const Dashboard = ({ user }) => {
 
     const newMarker = {
       position: latlng,
-      address: 'New Marker', // Placeholder for address
-      title: 'New Marker Title', // Placeholder for title
-      description: 'Description for the new marker.', // Placeholder for description
+      address: "User Marker",
+      title: "Custom Marker",
+      description: "User-added location.",
     };
-    setMarkers((current) => [...current, newMarker]); // Add new marker to the state
+    setMarkers((current) => [...current, newMarker]);
   };
 
-  // Function to always open InfoWindow when marker is clicked
+  // **3. Handle marker click (InfoWindow)**
   const handleMarkerClick = (marker) => {
     setSelectedMarker(marker);
-    setInfoWindowOpen(true); // Always open the InfoWindow on marker click
+    setInfoWindowOpen(true);
   };
 
-  // Function to handle place search using Google Places API
+  // **4. Geocoding handler**
+  const handleGeocode = async (geocoder) => {
+    const input = document.getElementById("latlng").value;
+    const [lat, lng] = input.split(",").map(Number);
+
+    try {
+      const response = await geocoder.geocode({ location: { lat, lng } });
+      if (response.results.length > 0) {
+        const newMarker = {
+          position: { lat, lng },
+          address: response.results[0].formatted_address,
+          title: "Geocoded Location",
+          description: "Geocoded from input coordinates.",
+        };
+        setMarkers((current) => [...current, newMarker]);
+        map.setCenter({ lat, lng });
+      } else {
+        alert("No results found.");
+      }
+    } catch (e) {
+      alert(`Geocoder failed: ${e.message}`);
+    }
+  };
+
+  // **5. Place search handler**
   const handlePlaceSearch = () => {
     const placeName = placeNameRef.current.value;
     const service = new window.google.maps.places.PlacesService(map);
 
-    // Define the request to find the place by name
     const request = {
       query: placeName,
-      fields: ['name', 'geometry'],
+      fields: ["name", "geometry"],
     };
 
-    // Make the request using the PlacesService
     service.findPlaceFromQuery(request, (results, status) => {
       if (status === window.google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
         const place = results[0];
@@ -131,66 +125,49 @@ const Dashboard = ({ user }) => {
           position: place.geometry.location,
           address: place.name,
           title: place.name,
-          description: 'Description for the place.',
+          description: "Place searched via name.",
         };
         setMarkers((current) => [...current, newMarker]);
         map.setCenter(place.geometry.location);
       } else {
-        window.alert('Place not found');
+        alert("Place not found.");
       }
     });
   };
 
-  // Calculate the route between two selected markers
-  async function calculateRoute() {
+  // **6. Calculate route between first and last markers**
+  const calculateRoute = async () => {
     if (markers.length < 2) {
-      alert('Please add at least two markers to calculate a route.');
+      alert("Please add at least two markers to calculate a route.");
       return;
     }
 
     const directionsService = new window.google.maps.DirectionsService();
-    const results = await directionsService.route({
-      origin: { lat: markers[0].position.lat, lng: markers[0].position.lng },
-      destination: { lat: markers[1].position.lat, lng: markers[1].position.lng },
-      travelMode: window.google.maps.TravelMode.DRIVING,
-    });
+    const origin = markers[0].position;
+    const destination = markers[markers.length - 1].position;
 
-    setDirectionsResponse(results);
-    setDistance(results.routes[0].legs[0].distance.text);
-    setDuration(results.routes[0].legs[0].duration.text);
-  }
+    try {
+      const result = await directionsService.route({
+        origin,
+        destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      });
 
-  const onLoad = useCallback((map) => {
-    setMap(map);
-  }, []);
+      setDirectionsResponse(result);
+      setDistance(result.routes[0].legs[0].distance.text);
+      setDuration(result.routes[0].legs[0].duration.text);
+    } catch (error) {
+      console.error("Error calculating route:", error);
+    }
+  };
 
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
+  const onLoad = useCallback((map) => setMap(map), []);
+  const onUnmount = useCallback(() => setMap(null), []);
 
   return (
-    <div className="dashboard-content h-screen w-screen"> {/* Full height and width */}
-      <div className="h-full w-full p-6 bg-teal-50 shadow-lg rounded-lg"> {/* Covering full screen */}
+    <div className="dashboard-content h-screen w-screen">
+      <div className="h-full w-full p-6 bg-teal-50 shadow-lg rounded-lg">
         <h2 className="text-3xl font-bold text-teal-700 text-center mb-6">Dashboard</h2>
-
-        {error ? (
-          <p className="text-red-500 text-center">{error}</p>
-        ) : (
-          <ul className="space-y-4">
-            {data.length > 0 ? (
-              data.map((item, index) => (
-                <li
-                  key={index}
-                  className="p-4 bg-white rounded shadow hover:bg-teal-100 transition duration-200"
-                >
-                  {item}
-                </li>
-              ))
-            ) : (
-              <p className="text-center text-gray-500">No data available.</p>
-            )}
-          </ul>
-        )}
 
         {/* Geocoding input */}
         <div className="my-6">
@@ -201,7 +178,6 @@ const Dashboard = ({ user }) => {
             className="p-2 border border-teal-400 rounded"
           />
           <button
-            id="submit"
             className="p-2 ml-2 bg-teal-600 text-white rounded"
             onClick={() => handleGeocode(new window.google.maps.Geocoder())}
           >
@@ -234,26 +210,27 @@ const Dashboard = ({ user }) => {
           <p>Duration: {duration}</p>
         </div>
 
-        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={['places']}>
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={["places"]}>
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
-            zoom={8}
+            zoom={12}
             onLoad={onLoad}
             onUnmount={onUnmount}
-            onClick={handleMapClick} // Handle map click to add marker
+            onClick={handleMapClick}
           >
             {markers.map((marker, index) => (
               <Marker
                 key={index}
                 position={marker.position}
-                onClick={() => handleMarkerClick(marker)} // Open InfoWindow on marker click
+                onClick={() => handleMarkerClick(marker)}
               />
             ))}
+
             {selectedMarker && infoWindowOpen && (
               <InfoWindow
                 position={selectedMarker.position}
-                onCloseClick={() => setInfoWindowOpen(false)} // Close the InfoWindow
+                onCloseClick={() => setInfoWindowOpen(false)}
               >
                 <div>
                   <h4>{selectedMarker.title}</h4>
@@ -262,6 +239,7 @@ const Dashboard = ({ user }) => {
                 </div>
               </InfoWindow>
             )}
+
             {directionsResponse && <DirectionsRenderer directions={directionsResponse} />}
           </GoogleMap>
         </LoadScript>
